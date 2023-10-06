@@ -53,6 +53,7 @@ void init() {
 int main() {
     SetConsoleTitle("Mythware Terminator");
     HWND hWnd = ::GetForegroundWindow();
-	::SetWindowPos(hWnd, HWND_TOPMOST, 0, 0, 100, 100, SWP_NOMOVE | SWP_NOSIZE);
+    SetWindowLong(hWnd, GWL_EXSTYLE, WS_EX_TOOLWINDOW);
+	::SetWindowPos(hWnd, HWND_TOPMOST, 0, 0, 100, 100, SWP_NOMOVE | SWP_NOSIZE | SWP_NOREPOSITION);
     init();
 }
