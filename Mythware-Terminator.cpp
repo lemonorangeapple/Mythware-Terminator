@@ -6,6 +6,7 @@ using namespace std;
 DWORD main_pid = 0;
 DWORD hook_pid = 0;
 HWND hBoardWindow;
+HANDLE hBoardHookThread;
 HHOOK kbdHook;
 HHOOK mseHook;
 
@@ -72,6 +73,37 @@ LRESULT CALLBACK HookProc(int nCode, WPARAM wParam, LPARAM lParam) {
     return FALSE;
 }
 
+DWORD WINAPI HideThreadProc(LPVOID lpParameter) {
+    while (true) {
+        ShowWindow(hBoardWindow, SW_MINIMIZE);
+        Sleep(50);
+        if (!IsWindow(hBoardWindow)) {
+			break;
+		}
+    }
+    return 0;
+}
+
+void WindowHookProc() {
+	if (!IsWindow(hBoardWindow)) {
+		hBoardWindow = FindWindow(NULL, "ÆÁÄ»¹ã²¥");
+		if (hBoardWindow == NULL) {
+			hBoardWindow = FindWindow(NULL, "¹²ÏíÆÁÄ»");
+		}
+		if (hBoardWindow == NULL) {
+			hBoardWindow = FindWindow(NULL, "BlackScreen Window");
+		}
+	}
+	if (!IsIconic(hBoardWindow)) {
+		hBoardHookThread = CreateThread(NULL, 0, HideThreadProc, NULL, 0, NULL);
+	}
+	else {
+		TerminateThread(hBoardHookThread, 0);
+		ShowWindow(hBoardWindow, SW_RESTORE);
+	}
+	return;
+}
+
 DWORD WINAPI KeyHookThreadProc(LPVOID lpParameter) {
     while (true) {
         kbdHook = (HHOOK)SetWindowsHookEx(WH_KEYBOARD_LL, (HOOKPROC)HookProc, GetModuleHandle(NULL), 0);
@@ -96,20 +128,13 @@ DWORD WINAPI MouseHookThreadProc(LPVOID lpParameter) {
 }
 
 DWORD WINAPI WindowHookThreadProc(LPVOID lpParameter) {
-	while (true) {
-		if (!IsWindow(hBoardWindow)) {
-			hBoardWindow = FindWindow(NULL, "ÆÁÄ»¹ã²¥");
-			if (hBoardWindow == NULL) {
-				hBoardWindow = FindWindow(NULL, "¹²ÏíÆÁÄ»");
-			}
-			if (hBoardWindow == NULL) {
-				hBoardWindow = FindWindow(NULL, "BlackScreen Window");
-			}
+	RegisterHotKey(NULL, 1, NULL, VK_F1);
+    MSG msg = {0};
+	while (GetMessage(&msg, NULL, 0, 0)) {
+		if (msg.message == WM_HOTKEY) {
+			WindowHookProc();
 		}
-		ShowWindow(hBoardWindow, SW_MINIMIZE);
-		Sleep(50);
 	}
-	return 0;
 }
 
 
@@ -133,12 +158,14 @@ void init() {
     int n;
     cout << "1. Suspend service"<< endl;
     cout << "2. Resume service" << endl;
-    cout << "3. Exit" << endl;
+    cout << "3. Hide/Show window (Press F1)" << endl;
+    cout << "4. Exit" << endl;
     cin >> n;
     switch(n) {
         case 1: Suspend_service(); break;
         case 2: Resume_service(); break;
-        case 3: exit(0); break;
+        case 3: WindowHookProc(); break;
+        case 4: exit(0); break;
         default: system("cls"); init();
     }
 }
@@ -158,5 +185,5 @@ int main() {
     CreateThread(NULL, 0, KeyHookThreadProc, NULL, 0, NULL);
     CreateThread(NULL, 0, MouseHookThreadProc, NULL, 0, NULL);
     CreateThread(NULL, 0, WindowHookThreadProc, NULL, 0, NULL);
-    init();
+	init();
 }
