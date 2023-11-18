@@ -78,30 +78,30 @@ DWORD WINAPI HideThreadProc(LPVOID lpParameter) {
         ShowWindow(hBoardWindow, SW_MINIMIZE);
         Sleep(50);
         if (!IsWindow(hBoardWindow)) {
-			break;
-		}
+            break;
+        }
     }
     return 0;
 }
 
 void WindowHookProc() {
-	if (!IsWindow(hBoardWindow)) {
-		hBoardWindow = FindWindow(NULL, "ÆÁÄ»¹ã²¥");
-		if (hBoardWindow == NULL) {
-			hBoardWindow = FindWindow(NULL, "¹²ÏíÆÁÄ»");
-		}
-		if (hBoardWindow == NULL) {
-			hBoardWindow = FindWindow(NULL, "BlackScreen Window");
-		}
-	}
-	if (!IsIconic(hBoardWindow)) {
-		hBoardHookThread = CreateThread(NULL, 0, HideThreadProc, NULL, 0, NULL);
-	}
-	else {
-		TerminateThread(hBoardHookThread, 0);
-		ShowWindow(hBoardWindow, SW_RESTORE);
-	}
-	return;
+    if (!IsWindow(hBoardWindow)) {
+        hBoardWindow = FindWindow(NULL, "ÆÁÄ»¹ã²¥");
+        if (hBoardWindow == NULL) {
+            hBoardWindow = FindWindow(NULL, "¹²ÏíÆÁÄ»");
+        }
+        if (hBoardWindow == NULL) {
+            hBoardWindow = FindWindow(NULL, "BlackScreen Window");
+        }
+    }
+    if (!IsIconic(hBoardWindow)) {
+        hBoardHookThread = CreateThread(NULL, 0, HideThreadProc, NULL, 0, NULL);
+    }
+    else {
+        TerminateThread(hBoardHookThread, 0);
+        ShowWindow(hBoardWindow, SW_RESTORE);
+    }
+    return;
 }
 
 DWORD WINAPI KeyHookThreadProc(LPVOID lpParameter) {
@@ -128,13 +128,13 @@ DWORD WINAPI MouseHookThreadProc(LPVOID lpParameter) {
 }
 
 DWORD WINAPI WindowHookThreadProc(LPVOID lpParameter) {
-	RegisterHotKey(NULL, 1, NULL, VK_F1);
+    RegisterHotKey(NULL, 1, NULL, VK_F1);
     MSG msg = {0};
-	while (GetMessage(&msg, NULL, 0, 0)) {
-		if (msg.message == WM_HOTKEY) {
-			WindowHookProc();
-		}
-	}
+    while (GetMessage(&msg, NULL, 0, 0)) {
+        if (msg.message == WM_HOTKEY) {
+            WindowHookProc();
+        }
+    }
 }
 
 
@@ -175,15 +175,15 @@ int main() {
     HWND hWnd = ::GetForegroundWindow();
     SetWindowLong(hWnd, GWL_EXSTYLE, WS_EX_TOOLWINDOW);
     ShowWindow(hWnd, SW_MINIMIZE);
-	::SetWindowPos(hWnd, HWND_TOPMOST, 0, 0, 100, 100, SWP_NOMOVE | SWP_NOSIZE | SWP_NOREPOSITION);
+    ::SetWindowPos(hWnd, HWND_TOPMOST, 0, 0, 100, 100, SWP_NOMOVE | SWP_NOSIZE | SWP_NOREPOSITION);
     FindProcessPid("StudentMain.exe", main_pid);
     if (main_pid == NULL) {
-    	ShowWindow(hWnd, SW_HIDE);
+        ShowWindow(hWnd, SW_HIDE);
         MessageBox(hWnd, "¼«ÓòÎ´ÔËÐÐ£¡", "Mythware Terminator", MB_OK);
         return 0;
     }
     CreateThread(NULL, 0, KeyHookThreadProc, NULL, 0, NULL);
     CreateThread(NULL, 0, MouseHookThreadProc, NULL, 0, NULL);
     CreateThread(NULL, 0, WindowHookThreadProc, NULL, 0, NULL);
-	init();
+    init();
 }
