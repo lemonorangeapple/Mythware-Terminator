@@ -1,8 +1,13 @@
-#include <iostream>
+#ifndef MASTER_H
+#define MASTER_H
+
 #include <Windows.h>
 #include <TlHelp32.h>
+#include <cstring>
 using namespace std;
 
+HWND hWnd;
+DWORD main_hide = 0;
 DWORD main_pid = 0;
 DWORD hook_pid = 0;
 HWND hBoardWindow;
@@ -27,7 +32,7 @@ BOOL FindProcessPid(LPCSTR ProcessName, DWORD& dwPid) {
     }
     BOOL bRet = FALSE;
     do {
-        if (!strcmp(ProcessName, pe32.szExeFile)) {
+        if (!strcmp(ProcessName, (const char *)pe32.szExeFile)) {
             dwPid = pe32.th32ProcessID;
             bRet = TRUE;
             break;
@@ -39,34 +44,34 @@ BOOL FindProcessPid(LPCSTR ProcessName, DWORD& dwPid) {
     return bRet;
 }
 
-void SuspendProcess(DWORD process_id) { 
-    HANDLE hThreadSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, 0);    
-    THREADENTRY32 threadEntry; 
-    threadEntry.dwSize = sizeof(THREADENTRY32);       
+void SuspendProcess(DWORD process_id) {
+    HANDLE hThreadSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, 0);
+    THREADENTRY32 threadEntry;
+    threadEntry.dwSize = sizeof(THREADENTRY32);
     Thread32First(hThreadSnapshot, &threadEntry);
     do {
         if (threadEntry.th32OwnerProcessID == process_id) {
             HANDLE hThread = OpenThread(THREAD_ALL_ACCESS, FALSE,threadEntry.th32ThreadID);
             SuspendThread(hThread);
-            CloseHandle(hThread); 
+            CloseHandle(hThread);
         }
-    } while (Thread32Next(hThreadSnapshot, &threadEntry));   
-    CloseHandle(hThreadSnapshot); 
+    } while (Thread32Next(hThreadSnapshot, &threadEntry));
+    CloseHandle(hThreadSnapshot);
 }
 
-void ResumeProcess(DWORD process_id) { 
-    HANDLE hThreadSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, 0);    
-    THREADENTRY32 threadEntry; 
+void ResumeProcess(DWORD process_id) {
+    HANDLE hThreadSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, 0);
+    THREADENTRY32 threadEntry;
     threadEntry.dwSize = sizeof(THREADENTRY32);
     Thread32First(hThreadSnapshot, &threadEntry);
     do {
         if (threadEntry.th32OwnerProcessID == process_id) {
             HANDLE hThread = OpenThread(THREAD_ALL_ACCESS, FALSE,threadEntry.th32ThreadID);
             ResumeThread(hThread);
-            CloseHandle(hThread); 
+            CloseHandle(hThread);
         }
-    } while (Thread32Next(hThreadSnapshot, &threadEntry));   
-    CloseHandle(hThreadSnapshot); 
+    } while (Thread32Next(hThreadSnapshot, &threadEntry));
+    CloseHandle(hThreadSnapshot);
 }
 
 LRESULT CALLBACK HookProc(int nCode, WPARAM wParam, LPARAM lParam) {
@@ -86,12 +91,12 @@ DWORD WINAPI HideThreadProc(LPVOID lpParameter) {
 
 void WindowHookProc() {
     if (!IsWindow(hBoardWindow)) {
-        hBoardWindow = FindWindow(NULL, "屏幕广播");
+        hBoardWindow = FindWindowA(NULL, "屏幕广播");
         if (hBoardWindow == NULL) {
-            hBoardWindow = FindWindow(NULL, "共享屏幕");
+            hBoardWindow = FindWindowA(NULL, "共享屏幕");
         }
         if (hBoardWindow == NULL) {
-            hBoardWindow = FindWindow(NULL, "BlackScreen Window");
+            hBoardWindow = FindWindowA(NULL, "BlackScreen Window");
         }
     }
     if (!IsIconic(hBoardWindow)) {
@@ -128,7 +133,7 @@ DWORD WINAPI MouseHookThreadProc(LPVOID lpParameter) {
 }
 
 DWORD WINAPI WindowHookThreadProc(LPVOID lpParameter) {
-    RegisterHotKey(NULL, 1, NULL, VK_F1);
+    RegisterHotKey(NULL, 1, NULL, VK_F2);
     MSG msg = {0};
     while (GetMessage(&msg, NULL, 0, 0)) {
         if (msg.message == WM_HOTKEY) {
@@ -137,53 +142,53 @@ DWORD WINAPI WindowHookThreadProc(LPVOID lpParameter) {
     }
 }
 
+void WindowSwitchProc() {
+    if (!main_hide) {
+        ShowWindow(hWnd, SW_HIDE);
+        main_hide = 1;
+    }
+    else {
+        ShowWindow(hWnd, SW_RESTORE);
+        main_hide = 0;
+    }
+}
 
-void init();
+DWORD WINAPI WindowSwitchThreadProc(LPVOID lpParameter) {
+    RegisterHotKey(NULL, 1, NULL, VK_F1);
+    MSG msg = {0};
+    while (GetMessage(&msg, NULL, 0, 0)) {
+        if (msg.message == WM_HOTKEY) {
+            WindowSwitchProc();
+        }
+    }
+}
 
 void Suspend_service() {
-    SuspendProcess(main_pid);
-    Sleep(1500);
-    system("cls");
-    init();
+    if (main_pid != 0) {
+        SuspendProcess(main_pid);
+    }
+    else {
+        MessageBoxA(NULL, "未找到极域进程", "Mythware-Terminator", MB_OK);
+    }
 }
 
 void Resume_service() {
-    ResumeProcess(main_pid);
-    Sleep(1500);
-    system("cls");
-    init();
-}
-
-void init() {
-    int n;
-    cout << "1. Suspend service"<< endl;
-    cout << "2. Resume service" << endl;
-    cout << "3. Hide/Show window (Press F1)" << endl;
-    cout << "4. Exit" << endl;
-    cin >> n;
-    switch(n) {
-        case 1: Suspend_service(); break;
-        case 2: Resume_service(); break;
-        case 3: WindowHookProc(); break;
-        case 4: exit(0); break;
-        default: system("cls"); init();
+    if (main_pid != 0) {
+        ResumeProcess(main_pid);
+    }
+    else {
+        MessageBoxA(NULL, "未找到极域进程", "Mythware-Terminator", MB_OK);
     }
 }
 
-int main() {
-    SetConsoleTitle("Mythware Terminator");
-    HWND hWnd = ::GetForegroundWindow();
-    SetWindowLong(hWnd, GWL_EXSTYLE, WS_EX_TOOLWINDOW);
-    ShowWindow(hWnd, SW_MINIMIZE);
-    ::SetWindowPos(hWnd, HWND_TOPMOST, 0, 0, 100, 100, SWP_NOMOVE | SWP_NOSIZE | SWP_NOREPOSITION);
+void Check_Mythware_service() {
     FindProcessPid("StudentMain.exe", main_pid);
-    if (main_pid == NULL) {
-        ShowWindow(hWnd, SW_HIDE);
-        MessageBox(hWnd, "极域未运行！", "Mythware Terminator", MB_OK);
-        return 0;
+    if (main_pid == 0) {
+        MessageBoxA(NULL, "未找到极域进程", "Mythware-Terminator", MB_OK);
     }
-    CreateThread(NULL, 0, KeyHookThreadProc, NULL, 0, NULL);
-    CreateThread(NULL, 0, MouseHookThreadProc, NULL, 0, NULL);
-    CreateThread(NULL, 0, WindowHookThreadProc, NULL, 0, NULL);
-    init();
+    else {
+        MessageBoxA(NULL, "成功找到极域进程", "Mythware-Terminator", MB_OK);
+    }
 }
+
+#endif // MASTER_H
